@@ -47,18 +47,24 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function SignIn() {
+export default function SignUp() {
   const classes = useStyles()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const handleSignIn = (e) => {
+  const [passwordConfirmation, setPasswordConfirmation] = useState('')
+
+  const handleSignUp = (e) => {
     e.preventDefault()
 
-    auth
-      .signInWithEmailAndPassword(email, password)
-      .then((user) => console.log(user))
-      .catch((err) => console.error(err))
+    if (password === passwordConfirmation) {
+      auth
+        .createUserWithEmailAndPassword(email, password)
+        .then((user) => console.log(user))
+        .catch((err) => console.error(err))
+    } else {
+      alert("Password don't match")
+    }
   }
 
   return (
@@ -69,7 +75,7 @@ export default function SignIn() {
           <LockOutlinedIcon />
         </Avatar>
         <Typography component="h1" variant="h5">
-          Sign in
+          Sign up
         </Typography>
         <form className={classes.form} noValidate>
           <TextField
@@ -98,9 +104,18 @@ export default function SignIn() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <FormControlLabel
-            control={<Checkbox value="remember" color="primary" />}
-            label="Remember me"
+          <TextField
+            variant="outlined"
+            margin="normal"
+            required
+            fullWidth
+            name="passwordConfirmation"
+            label="Password Confirmation"
+            type="password"
+            id="passwordConfirmation"
+            autoComplete="current-password"
+            value={passwordConfirmation}
+            onChange={(e) => setPasswordConfirmation(e.target.value)}
           />
           <Button
             type="submit"
@@ -108,21 +123,9 @@ export default function SignIn() {
             variant="contained"
             color="primary"
             className={classes.submit}
-            onClick={handleSignIn}>
-            Sign In
+            onClick={handleSignUp}>
+            Sign Up
           </Button>
-          <Grid container>
-            <Grid item xs>
-              <Link href="#" variant="body2">
-                Forgot password?
-              </Link>
-            </Grid>
-            <Grid item>
-              <Link href="/sign-up" variant="body2">
-                {"Don't have an account? Sign Up"}
-              </Link>
-            </Grid>
-          </Grid>
         </form>
       </div>
       <Box mt={8}>

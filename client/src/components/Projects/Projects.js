@@ -18,8 +18,16 @@ import Link from '@material-ui/core/Link'
 import MenuIcon from '@material-ui/icons/Menu'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import NotificationsIcon from '@material-ui/icons/Notifications'
+import AccountCircle from '@material-ui/icons/AccountCircle'
+import Menu from '@material-ui/core/Menu'
+import MenuItem from '@material-ui/core/MenuItem'
+import MailIcon from '@material-ui/icons/Mail'
 
 import { mainListItems, secondaryListItems } from './listItems'
+import ListProjects from './listProjects'
+
+import { auth } from '../../configs/firebase.config'
+import { connect } from 'react-redux'
 
 function Copyright() {
   return (
@@ -115,17 +123,84 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function Dashboard() {
+function Projects({ currentUser }) {
   const classes = useStyles()
   const [open, setOpen] = React.useState(true)
+  const [anchorEl, setAnchorEl] = React.useState(null)
+  const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = React.useState(null)
+
+  const isMenuOpen = Boolean(anchorEl)
+  const isMobileMenuOpen = Boolean(mobileMoreAnchorEl)
   const handleDrawerOpen = () => {
     setOpen(true)
   }
   const handleDrawerClose = () => {
     setOpen(false)
   }
-  const fixedHeightPaper = clsx(classes.paper, classes.fixedHeight)
+  const handleProfileMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget)
+  }
+  const handleMenuClose = () => {
+    setAnchorEl(null)
+    handleMobileMenuClose()
+  }
+  const handleMobileMenuClose = () => {
+    setMobileMoreAnchorEl(null)
+  }
+  const menuId = 'primary-search-account-menu'
+  const renderMenu = (
+    <Menu
+      anchorEl={anchorEl}
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      id={menuId}
+      keepMounted
+      transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      open={isMenuOpen}
+      onClose={handleMenuClose}>
+      <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
+      <MenuItem onClick={handleMenuClose}>My account</MenuItem>
+      <MenuItem onClick={() => auth.signOut()}>Logout</MenuItem>
+    </Menu>
+  )
 
+  const mobileMenuId = 'primary-search-account-menu-mobile'
+  const renderMobileMenu = (
+    <Menu
+      anchorEl={mobileMoreAnchorEl}
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      id={mobileMenuId}
+      keepMounted
+      transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      open={isMobileMenuOpen}
+      onClose={handleMobileMenuClose}>
+      <MenuItem>
+        <IconButton aria-label="show 4 new mails" color="inherit">
+          <Badge badgeContent={4} color="secondary">
+            <MailIcon />
+          </Badge>
+        </IconButton>
+        <p>Messages</p>
+      </MenuItem>
+      <MenuItem>
+        <IconButton aria-label="show 11 new notifications" color="inherit">
+          <Badge badgeContent={11} color="secondary">
+            <NotificationsIcon />
+          </Badge>
+        </IconButton>
+        <p>Notifications</p>
+      </MenuItem>
+      <MenuItem onClick={handleProfileMenuOpen}>
+        <IconButton
+          aria-label="account of current user"
+          aria-controls="primary-search-account-menu"
+          aria-haspopup="true"
+          color="inherit">
+          <AccountCircle />
+        </IconButton>
+        <p>Profile</p>
+      </MenuItem>
+    </Menu>
+  )
   return (
     <div className={classes.root}>
       <CssBaseline />
@@ -150,15 +225,26 @@ export default function Dashboard() {
             color="inherit"
             noWrap
             className={classes.title}>
-            Dashboard
+            Projects
           </Typography>
           <IconButton color="inherit">
             <Badge badgeContent={4} color="secondary">
               <NotificationsIcon />
             </Badge>
           </IconButton>
+          <IconButton
+            edge="end"
+            aria-label="account of current user"
+            aria-controls={menuId}
+            aria-haspopup="true"
+            onClick={handleProfileMenuOpen}
+            color="inherit">
+            <AccountCircle />
+          </IconButton>
         </Toolbar>
       </AppBar>
+      {renderMobileMenu}
+      {renderMenu}
       <Drawer
         variant="permanent"
         classes={{
@@ -172,12 +258,13 @@ export default function Dashboard() {
         </div>
         <Divider />
         <List>{mainListItems}</List>
-        <Divider />
-        <List>{secondaryListItems}</List>
+        {/* <Divider />
+        <List>{secondaryListItems}</List> */}
       </Drawer>
       <main className={classes.content}>
         <div className={classes.appBarSpacer} />
         <Container maxWidth="lg" className={classes.container}>
+          <ListProjects />
           <Box pt={4}>
             <Copyright />
           </Box>
@@ -186,3 +273,8 @@ export default function Dashboard() {
     </div>
   )
 }
+
+const mapStateToProps = (state) => ({
+  currentUser: state.auth.currentUser,
+})
+export default connect(mapStateToProps)(Projects)
