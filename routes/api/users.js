@@ -1,103 +1,98 @@
-const express = require('express')
-const router = express.Router()
-const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
-const config = require('config')
-const {check, validationResult} = require('express-validator')
+const express = require("express");
+const router = express.Router();
+const bcrypt = require("bcryptjs");
+const config = require("config");
+const jwt = require("jsonwebtoken");
+const keys = require("../../config/keys");
+// Load input validation
+const validateRegisterInput = require("../../validation/register");
+const validateLoginInput = require("../../validation/login");
+// Load User model
+const User = require("../../models/User");
 
-const auth = require('../../middleware/auth')
-
-const User = require('../../models/User')
-const checkObjectId = require('../../middleware/checkObjectId')
-
-// @route    POST api/users
-// @desc     Register user
-// @access   Public
-router.post(
-  '/',
-  [
-    check('name', 'Name is required').not().isEmpty(),
-    check('email', 'Please include a valid email').isEmail(),
-    check(
-      'password',
-      'Please enter a password with 6 or more characters'
-    ).isLength({min: 6}),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({errors: errors.array()})
+// @route POST api/users/register
+// @desc Register user
+// @access Public
+router.post("/register", (req, res) => {
+  // Form validation
+  const { errors, isValid } = validateRegisterInput(req.body);
+  // Check validation
+  if (!isValid) {
+    return res.status(400).json(errors);
+  }
+  User.findOne({ email: req.body.email }).then((user) => {
+    if (user) {
+      return res.status(400).json({ email: "Email already exists" });
+    } else {
+      const newUser = new User({
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        password: req.body.password,
+      });
+      // Hash password before saving in database
+      bcrypt.genSalt(10, (err, salt) => {
+        bcrypt.hash(newUser.password, salt, (err, hash) => {
+          if (err) throw err;
+          newUser.password = hash;
+          newUser
+            .save()
+            .then((user) => res.json(user))
+            .catch((err) => console.log(err));
+        });
+      });
     }
+  });
+});
 
-    const {name, email, password} = req.body
-
-    try {
-      let user = await User.findOne({email})
-
-      if (user) {
-        return res.status(400).json({errors: [{msg: 'User already exists'}]})
-      }
-
-      user = new User({
-        name,
-        email,
-        password,
-      })
-
-      const salt = await bcrypt.genSalt(10)
-
-      user.password = await bcrypt.hash(password, salt)
-
-      await user.save()
-
-      const payload = {
-        user: {
+// @route POST api/users/login
+// @desc Login user and return JWT token
+// @access Public
+router.post("/login", (req, res) => {
+  // Form validation
+  const { errors, isValid } = validateLoginInput(req.body);
+  // Check validation
+  if (!isValid) {
+    return res.status(400).json(errors);
+  }
+  const email = req.body.email;
+  const password = req.body.password;
+  // Find user by email
+  User.findOne({ email }).then((user) => {
+    // Check if user exists
+    if (!user) {
+      return res.status(404).json({ emailnotfound: "Email not found" });
+    }
+    // Check password
+    bcrypt.compare(password, user.password).then((isMatch) => {
+      if (isMatch) {
+        // User matched
+        // Create JWT Payload
+        const payload = {
           id: user.id,
-        },
+          name: user.name,
+        };
+        // Sign token
+        jwt.sign(
+          payload,
+          keys.secretOrKey,
+          {
+            expiresIn: 31556926, // 1 year in seconds
+          },
+          (err, token) => {
+            res.json({
+              success: true,
+              token: "Bearer " + token,
+            });
+          }
+        );
+      } else {
+        return res
+          .status(400)
+          .json({ passwordincorrect: "Password incorrect" });
       }
+    });
+  });
+});
 
-      jwt.sign(
-        payload,
-        config.get('jwtSecret'),
-        {expiresIn: '5 days'},
-        (err, token) => {
-          if (err) throw err
-          res.json({token})
-        }
-      )
-    } catch (err) {
-      console.error(err.message)
-      res.status(500).send('Server error')
-    }
-  }
-)
-
-// @route    GET api/users
-// @desc     Get all users
-// @access   Private
-router.get('/', auth, async (req, res) => {
-  try {
-    const users = await User.find()
-    res.json(users)
-  } catch (err) {
-    console.error(err.message)
-    res.status(500).send('Server Error')
-  }
-})
-
-// @route    GET api/users/:id
-// @desc     Get user by ID
-// @access   Private
-router.get('/:id', [auth, checkObjectId('id')], async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id)
-
-    res.json(user)
-  } catch (err) {
-    console.error(err.message)
-
-    res.status(500).send('Server Error')
-  }
-})
-
-module.exports = router
+module.exports = router;
