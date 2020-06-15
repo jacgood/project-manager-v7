@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const config = require("config");
 const jwt = require("jsonwebtoken");
-const keys = config.get("jwtSecret");
+const keys = require("../../config/keys");
 // Load input validation
 const validateRegisterInput = require("../../validation/register");
 const validateLoginInput = require("../../validation/login");
@@ -25,7 +25,8 @@ router.post("/register", (req, res) => {
       return res.status(400).json({ email: "Email already exists" });
     } else {
       const newUser = new User({
-        name: req.body.name,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
         email: req.body.email,
         password: req.body.password,
       });
